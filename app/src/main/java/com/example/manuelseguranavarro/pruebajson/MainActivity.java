@@ -22,14 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
-
+    final String LIST_RESPONSE = "response";
+    final String LIST_GIGS = "gigs";
+    final String LISTS_ARTISTS = "artists";
     ProgressBar progressBar;
     ImageView imageView;
     TextView textViewNombre,txtLugar,txtEvento;
-    String []objetos= new String[4];
     String id="bf2ce448982dd479166da51d5fa49668";
     String urlCiudad = "http://www.nvivo.es/api/request.php?api_key="+id+"&method=city.getEvents&city=Madrid&format=json";
-    JSONObject jsonCiudad, JsonNombre,JsonImagen,JsonLugar;
+    JSONObject objLista = new JSONObject();
+
+
 
     List<String> allNames = new ArrayList<String>();
     JSONArray cast = new JSONArray(allNames);
@@ -38,7 +41,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         new Sincronizador().execute(urlCiudad);
     }
 
@@ -53,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public class Sincronizador extends AsyncTask<String, String, String[]>{
+    public class Sincronizador extends AsyncTask<String, JSONObject, JSONObject>{
 
         @Override
         protected void onPreExecute() {
@@ -62,52 +64,66 @@ public class MainActivity extends AppCompatActivity {
             progressBar.setVisibility(View.VISIBLE);
         }
         @Override
-        protected String[] doInBackground(String... params) {
-            final String OWM_LIST = "response";
+        protected JSONObject doInBackground(String... params) {
+
             try {
-                jsonCiudad = JsonParser.readJsonFromUrl(params[0]);
 
-                //objetos[0]= jsonCiudad.getJSONObject("venue").getString("name");
-                //objetos[0] = String.valueOf(jsonCiudad.getJSONObject("response"));
-                JSONObject prueba = jsonCiudad.getJSONObject(OWM_LIST);
-                JSONArray listaArray = prueba.getJSONArray("gigs");
-
-                Log.e("Objeto array", String.valueOf(listaArray.length()));
-                JSONObject objeto;
-                for (int i = 0; i < listaArray.length(); i++) {
-                    objeto = (JSONObject) listaArray.get(i);
-
-                    Log.e("nombre ",""+objeto.getString("name"));
-
-                   // objetos[0]= objetoArray.getString("name");
-                }
+                objLista = JsonParser.readJsonFromUrl(params[0]);
 
 
-
-//                JsonNombre = JsonParser.readJsonFromUrl(params[1]);
-               // objetos[1] = JsonNombre.getString("status");
-             //   JsonLugar = JsonParser.readJsonFromUrl(params[2]);
-               // objetos[2] = JsonLugar.getString("response");
-               // JsonImagen = JsonParser.readJsonFromUrl(params[3]);
-                //objetos[3] = JsonImagen.getJSONObject("artists").getString("art_logo");
             }catch (IOException ex){
                 ex.printStackTrace();
             }catch (JSONException ex){
                 ex.printStackTrace();
             }
-            return objetos;
+            return objLista;
         }
         @Override
-        protected void onPostExecute(String[] stringDesedeDoInBackground) {
-            super.onPostExecute(stringDesedeDoInBackground);
+        protected void onPostExecute(JSONObject objetoDesedeDoInBackground) {
+            super.onPostExecute(objetoDesedeDoInBackground);
+
             textViewNombre = (TextView) findViewById(R.id.txtName);
-            textViewNombre.setText(stringDesedeDoInBackground[0]);
+
             txtEvento = (TextView)findViewById(R.id.txtCity);
-            txtEvento.setText(stringDesedeDoInBackground[1]);
+
             txtLugar = (TextView)findViewById(R.id.txtLugar);
-            txtLugar.setText(stringDesedeDoInBackground[2]);
+
             imageView = (ImageView)findViewById(R.id.imgView);
-            Picasso.with(MainActivity.this).load(stringDesedeDoInBackground[3]).into(imageView);
+            //Picasso.with(MainActivity.this).load(objetoDesedeDoInBackground[1]).into(imageView);
+            JSONObject objResponse = null;
+            try {
+                objResponse = objetoDesedeDoInBackground.getJSONObject(LIST_RESPONSE);
+                JSONArray arrGigs = objResponse.getJSONArray(LIST_GIGS);
+
+                for (int i = 0; i < arrGigs.length() ; i++) {
+                    JSONObject objGigs = (JSONObject) arrGigs.get(i);
+                    String name = objGigs.getString("name");
+                    textViewNombre.setText(name);
+                    JSONObject objetoVenue = objGigs.getJSONObject("venue");
+                   // JSONObject objetodDescripcion = objGigs.getJSONObject("description");
+
+                    //txtLugar.setText(objetoVenue.getJSONObject("venue").getString("name"));
+                    txtLugar.setText(objGigs.getString("startDate"));
+
+                    Picasso.with(MainActivity.this).load("http://d36jiqg3u1m7g0.cloudfront.net/salas/143x91/v2_143x91_thumb_91_sala_heineken.jpg").into(imageView);
+                    Picasso.with(MainActivity.this).setIndicatorsEnabled(true);
+
+
+                    Log.e("Gigs",name);
+                    JSONArray arrArtist = objGigs.getJSONArray(LISTS_ARTISTS);
+                    for (int j = 0; j < arrArtist.length(); j++) {
+                        JSONObject objArtista = arrArtist.getJSONObject(j);
+                        txtEvento.setText(objArtista.getString("name"));
+                        Picasso.with(MainActivity.this).load(String.valueOf(objetoDesedeDoInBackground.getJSONObject("art_logo"))).into(imageView);
+
+                    }
+
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+
             progressBar = (ProgressBar)findViewById(R.id.progressBar);
             progressBar.setVisibility(View.GONE);
         }
